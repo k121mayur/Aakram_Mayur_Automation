@@ -1,3 +1,5 @@
+from openpyxl import load_workbook
+
 from cred_sargule import username, password
 from tkinter import Tk, Label, Entry, Button
 from datetime import datetime
@@ -9,6 +11,17 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import os
 import pygame
+
+excel_file = load_workbook("count.xlsx")
+work_sheet = excel_file["Sheet1"]
+
+last_row = work_sheet.max_row
+for row in range(last_row, 0, -1):
+    if any(cell.value is not None for cell in work_sheet[row]):
+        last_non_empty_row = row
+        break
+
+current_row = last_non_empty_row + 1
 
 
 # from captcha import extract_captcha_text
@@ -79,7 +92,7 @@ try:
 
     time.sleep(3)
 
-    TOTP = "973168"  # input("Enter TOTP: ")
+    TOTP = "985045"  # input("Enter TOTP: ")
 
     driver.find_element(
         By.NAME, "ctl00$ContentPlaceHolder1$Txtusernameuseotp"
@@ -172,11 +185,16 @@ try:
                 "/html/body/form/div[3]/div/div[3]/div/div/div[1]/table/tbody/tr[1]/th[20]/table/tbody/tr[2]/td/input",
             ).click()
             # list_of_checkboxes = driver.find_elements(By.XPATH, "/html/body/form/div[3]/div/div[3]/div/div/div[1]/table/tbody/tr[1]/th[20]/table/tbody/tr[3]/td/input")
-            time.sleep(2)
-
-            driver.find_element(
-                By.NAME, "ctl00$ContentPlaceHolder1$BtnFinalsubmit"
-            ).click()
+            time.sleep(5)
+            finalSubmit = WebDriverWait(driver, 20).until(
+                EC.presence_of_element_located(
+                    (By.NAME, "ctl00$ContentPlaceHolder1$BtnFinalsubmit")
+                )
+            )
+            finalSubmit.click()
+            # driver.find_element(
+            #     By.NAME, "ctl00$ContentPlaceHolder1$BtnFinalsubmit"
+            # ).click()
 
             alert = WebDriverWait(driver, 5).until(EC.alert_is_present())
             alert.accept()
@@ -195,12 +213,14 @@ try:
             alert.accept()
 
             time.sleep(2)
-            handle.write(
-                str(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-                + " ,"
-                + str(result)
-                + "\n"
+            work_sheet[f"A{current_row}"] = str(
+                datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             )
+            work_sheet[f"B{current_row}"] = int(result)
+            work_sheet[f"C{current_row}"] = f'=TEXT(A{current_row}, "DD/MM/YYYY")'
+            current_row += 1
+            excel_file.save("count.xlsx")
+
         else:
             for link in links:
                 if link["link"].text == "Reject":
@@ -228,19 +248,25 @@ try:
                     alert.accept()
 
                     time.sleep(2)
-                    handle.write(
-                        str(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-                        + " ,"
-                        + "1"
-                        + "\n"
+                    work_sheet[f"A{current_row}"] = str(
+                        datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     )
+                    work_sheet[f"B{current_row}"] = 1
+                    work_sheet[f"C{current_row}"] = (
+                        f'=TEXT(A{current_row}, "DD/MM/YYYY")'
+                    )
+                    current_row += 1
+                    excel_file.save("count.xlsx")
+
                     break
-except:
+except Exception as e:
+    print(e)
+    print("Error in code; Playing Music")
     pygame.mixer.init()
 
-    pygame.mixer.music.load("sare_jahan_se_accha.mp3")  
+    pygame.mixer.music.load("sare_jahan_se_accha.mp3")
 
     pygame.mixer.music.play()
 
-    while pygame.mixer.music.get_busy(): 
-        pygame.time.Clock().tick(10) 
+    while pygame.mixer.music.get_busy():
+        pygame.time.Clock().tick(10)
